@@ -117,8 +117,20 @@ int open_udp_socket(int *pong_port)
 		char port_number_as_str[6];
 		sprintf(port_number_as_str, "%d", port_number);
 /*** TO BE DONE START ***/
-
-
+		if ((gai_rv = getaddrinfo(NULL, port_number_as_str, &gai_hints, &pong_addrinfo)) != 0) {
+			fprintf(stderr, "UDP Pong getaddrinfo error: %s\n", gai_strerror(gai_rv));
+			return -1;
+		}
+		if ((udp_socket = socket(pong_addrinfo->ai_family, pong_addrinfo->ai_socktype, pong_addrinfo->ai_protocol)) < 0) {
+			freeaddrinfo(pong_addrinfo);
+			return -1;
+		}
+		bind_rv = bind(udp_socket, pong_addrinfo->ai_addr, pong_addrinfo->ai_addrlen);
+		freeaddrinfo(pong_addrinfo);
+		if (bind_rv == 0) {
+			*pong_port = port_number;
+			return udp_socket;
+		}
 /*** TO BE DONE END ***/
 		if (errno != EADDRINUSE) 
 			fail_errno("UDP Pong could not bind the socket");
@@ -263,9 +275,19 @@ int main(int argc, char **argv)
 	gai_hints.ai_protocol = IPPROTO_TCP;
 
 /*** TO BE DONE START ***/
+	if ((gai_rv = getaddrinfo(NULL, argv[1], &gai_hints, &server_addrinfo)) != 0) {
+		fprintf(stderr, "Pong Server getaddrinfo error: %s\n", gai_strerror(gai_rv));
+		exit(EXIT_FAILURE);
+	}
 
+	if ((server_socket = socket(server_addrinfo->ai_family, server_addrinfo->ai_socktype, server_addrinfo->ai_protocol)) < 0)
+		fail_errno("Pong Server could not create socket");
 
+	if (bind(server_socket, server_addrinfo->ai_addr, server_addrinfo->ai_addrlen))
+		fail_errno("Pong Server could not bind");
 
+	if (listen(server_socket, LISTENBACKLOG))
+		fail_errno("Pong Server could not listen");
 /*** TO BE DONE END ***/
 
 	freeaddrinfo(server_addrinfo);
